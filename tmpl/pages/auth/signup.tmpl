@@ -1,0 +1,27 @@
+{{define "auth/signup"}}
+<!doctype html>
+<html>
+
+<head>
+    <title>Sign Up - nydus</title>
+</head>
+
+<body>
+    <h1>Sign Up</h1>
+    <p>Sign up for a new account.</p>
+    {{if .error}}
+    <p class="error">{{.error}}</p>
+    {{end}}
+
+    <form action="/auth/signup" method="post">
+        <label for="username">Username</label>
+        <input type="text" name="username" id="username" {{if .username}} value="{.username}" {{end}} />
+        <label for="password">Password</label>
+        <input type="password" name="password" id="password" />
+        <input type="hidden" name="csrf_token" value="{{.csrf_token}}" />
+        <input type="submit" value="Sign Up" />
+    </form>
+
+</html>
+
+{{end}}
