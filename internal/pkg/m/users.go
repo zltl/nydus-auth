@@ -2,8 +2,8 @@ package m
 
 import "github.com/zltl/nydus-auth/pkg/id"
 
-// UserNewReq is the request body for the /user/new route.
-type UserNewReq struct {
+type UserPassword struct {
+	ID       id.ID  `json:"id"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }

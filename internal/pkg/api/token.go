@@ -1,6 +1,7 @@
 package api
 
 import (
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -9,16 +10,18 @@ import (
 )
 
 type CookieClaim struct {
+	Scope []string `json:"scope"`
 	jwt.RegisteredClaims
 }
 
-func (s *State) genCookieToken(uid id.ID) (string, error) {
+func (s *State) genToken(uid id.ID, scope []string, expires int) (string, error) {
 	now := time.Now()
 
 	claims := CookieClaim{
+		Scope: scope,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(
-				now.Add(time.Second * time.Duration(s.sessionJwtTTL))),
+				now.Add(time.Second * time.Duration(expires))),
 			IssuedAt: jwt.NewNumericDate(now),
 			Issuer:   "nydus-auth",
 			Subject:  uid.String(),
@@ -38,7 +41,7 @@ func (s *State) genCookieToken(uid id.ID) (string, error) {
 	return tokenString, err
 }
 
-func (s *State) validateCookieToken(tokenString string) (*CookieClaim, error) {
+func (s *State) validateToken(tokenString string, uri string) (*CookieClaim, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &CookieClaim{},
 		func(token *jwt.Token) (interface{}, error) {
 			return s.sessionJwtSecret, nil
@@ -49,9 +52,23 @@ func (s *State) validateCookieToken(tokenString string) (*CookieClaim, error) {
 	}
 
 	claim := token.Claims.(*CookieClaim)
-	if len(claim.Audience) == 0 {
-		logrus.Error("require audience")
+	if len(claim.Scope) == 0 {
+		logrus.Error("require scope")
 		return nil, err
 	}
+
+	// check uri with aud
+	ok := false
+	for _, scope := range claim.Scope {
+		if strings.HasPrefix(uri, scope) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		logrus.Error("scope not contain this uri")
+		return nil, err
+	}
+
 	return claim, nil
 }

@@ -1,0 +1,17 @@
+{{define "error"}}
+<!doctype html>
+<html>
+
+<head>
+    <title>Error - nydus</title>
+</head>
+
+<body>
+    <h1>Error</h1>
+    {{if .error}}
+    <p class="error">{{.error}}</p>
+    {{end}}
+
+</html>
+
+{{end}}

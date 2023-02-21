@@ -13,14 +13,12 @@ import (
 // response signup page
 func (s *State) handleGetAuthSignup(c *gin.Context) {
 	// jwt as CSRF token
-
-	csrfToken, err := s.genCsrfJwtToken([]string{"/auth/signup"})
+	thisUri := s.externFullUri("/auth/signup")
+	csrfToken, err := s.genCsrfJwtToken([]string{thisUri}, []string{c.ClientIP()})
 	if err != nil {
-		c.JSON(http.StatusMovedPermanently,
-			m.ErrRes{
-				Error: "nydus_auth.csrf_token",
-				Msg:   "could not generate csrf token:" + err.Error(),
-			})
+		c.HTML(http.StatusInternalServerError, "error", gin.H{
+			"error": "client not found",
+		})
 		return
 	}
 
@@ -42,8 +40,11 @@ func (s *State) handlePostAuthSignup(c *gin.Context) {
 		return
 	}
 
+	// TODO: delete this log
 	logrus.Debugf("--- %+v", body)
-	_, err = s.validateCsrfJwtToken(body.CSRFToken, "/auth/signup")
+
+	thisUri := s.externFullUri("/auth/signup")
+	_, err = s.validateCsrfJwtToken(body.CSRFToken, thisUri, c.ClientIP())
 	if err != nil {
 		c.Redirect(http.StatusMovedPermanently,
 			"/auth/signup?e="+"could not validate csrf token:"+err.Error())
@@ -80,14 +81,16 @@ func (s *State) handlePostAuthSignup(c *gin.Context) {
 		return
 	}
 
-	newToken, err := s.genCookieToken(newId)
+	newToken, err := s.genToken(newId,
+		[]string{s.externFullUri("/auth/"), s.externFullUri("/api/")},
+		s.sessionJwtTTL)
 	if err != nil {
 		c.Redirect(http.StatusMovedPermanently,
 			"/auth/signup?e="+"could not generate cookie token:"+err.Error())
 		return
 	}
 
-	// TODO: redirect to main page
+	// TODO: redirect to login page
 	c.SetCookie("_t", newToken, s.sessionExpire, "/", "", false, true)
 	c.JSON(http.StatusOK, gin.H{
 		"msg": "signup success",

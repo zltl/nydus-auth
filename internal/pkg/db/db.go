@@ -37,15 +37,24 @@ func (s *State) Open(url string) error {
 
 func (s *State) Query(query string, args ...any) (*sql.Rows, error) {
 	log.Debugf("query: %s, args: %v", query, args)
-	return s.db.Query(query, args...)
+	r, err := s.db.Query(query, args...)
+	if err != nil {
+		log.Error(err)
+	}
+	return r, err
 }
 
 func (s *State) QueryRow(query string, args ...any) *sql.Row {
 	log.Debugf("query row: %s, args: %v", query, args)
-	return s.db.QueryRow(query, args...)
+	r := s.db.QueryRow(query, args...)
+	return r
 }
 
 func (s *State) Exec(query string, args ...any) (sql.Result, error) {
 	log.Debugf("exec: %s, args: %v", query, args)
-	return s.db.Exec(query, args...)
+	r, err := s.db.Exec(query, args...)
+	if err != nil {
+		log.Error(err)
+	}
+	return r, err
 }

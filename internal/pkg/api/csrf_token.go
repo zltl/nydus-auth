@@ -9,19 +9,22 @@ import (
 )
 
 type CsrfClaim struct {
+	Scope   []string `json:"scope"`
+	AllowIp []string `json:"allow_ip"`
 	jwt.RegisteredClaims
 }
 
-func (s *State) genCsrfJwtToken(aud []string) (string, error) {
+func (s *State) genCsrfJwtToken(scope []string, allowIp []string) (string, error) {
 	now := time.Now()
 
 	claims := CsrfClaim{
+		AllowIp: allowIp,
+		Scope:   scope,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(
 				now.Add(time.Second * time.Duration(s.csrfJwtTTL))),
 			IssuedAt: jwt.NewNumericDate(now),
 			Issuer:   "nydus-auth",
-			Audience: aud,
 		},
 	}
 
@@ -38,7 +41,7 @@ func (s *State) genCsrfJwtToken(aud []string) (string, error) {
 	return tokenString, err
 }
 
-func (s *State) validateCsrfJwtToken(tokenString string, aud string) (bool, error) {
+func (s *State) validateCsrfJwtToken(tokenString string, url string, cip string) (bool, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &CsrfClaim{},
 		func(token *jwt.Token) (interface{}, error) {
 			return s.csrfJwtSecret, nil
@@ -52,13 +55,25 @@ func (s *State) validateCsrfJwtToken(tokenString string, aud string) (bool, erro
 		logrus.Error("require audience")
 		return false, err
 	}
-	// claim.Audience
+	// check cip
+	ok := false
+	for _, ip := range claim.AllowIp {
+		if ip == cip {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		logrus.Errorf("got cip %v, want %v", cip, claim.AllowIp)
+		return false, errors.New("invalid client ip")
+	}
+
 	for _, a := range claim.Audience {
-		if a == aud {
+		if a == url {
 			return true, nil
 		}
 	}
-	logrus.Errorf("got audience %v, want %v", claim.Audience, aud)
+	logrus.Errorf("got scope %v, want %v", claim.Audience, url)
 
 	return false, errors.New("invalid audience")
 }

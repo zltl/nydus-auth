@@ -1,0 +1,30 @@
+{{define "auth/authorize"}}
+<!doctype html>
+<html>
+
+<head>
+    <title>Authorize - nydus</title>
+</head>
+
+<body>
+    <h1>Authorize</h1>
+    {{if .error}}
+    <p class="error">{{.error}}</p>
+    {{end}}
+
+    <form action="/auth/authorize" method="post">
+        <label for="username">Username</label>
+        <input type="text" name="username" id="username" {{if .username}} value="{{.username}}" {{end}} />
+        <label for="password">Password</label>
+        <input type="password" name="password" id="password" />
+        <input type="hidden" name="client_id" value="{{.client_id}}" />
+        <input type="hidden" name="csrf_token" value="{{.csrf_token}}" />
+        <input type="hidden" name="redirect_uri" value="{{.redirect_uri}}">
+        <input type="hidden" name="scope" value="{{.scope}}" />
+        <input type="hidden" name="state" value="{{.state}}" />
+        <input type="submit" value="Log in" />
+    </form>
+
+</html>
+
+{{end}}
