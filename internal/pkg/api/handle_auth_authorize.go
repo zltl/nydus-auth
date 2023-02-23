@@ -38,13 +38,7 @@ func (s *State) handleGetAuthAuthorize(c *gin.Context) {
 	}
 
 	// check redirect_uri
-	ok := false
-	for _, uri := range client.RedirectUri {
-		if uri == redirectUri {
-			ok = true
-			break
-		}
-	}
+	ok := checkRedirectUri(client, redirectUri)
 	if !ok {
 		c.HTML(http.StatusBadRequest, "error", gin.H{
 			"error": "redirect_uri not allow",
@@ -52,27 +46,12 @@ func (s *State) handleGetAuthAuthorize(c *gin.Context) {
 		return
 	}
 
-	// check scopes
-	scopeList := strings.Split(scope, ",")
-	ok = true
-	for _, s := range client.Scopes {
-		oneOk := false
-		for _, scopeReq := range scopeList {
-			if strings.HasPrefix(scopeReq, s) {
-				oneOk = true
-				break
-			}
-		}
-		if !oneOk {
-			ok = false
-			break
-		}
-	}
-	if !ok {
+	// check if element of scope is in client.Scopes
+	if !checkScopeList(client, scope) {
 		c.HTML(http.StatusBadRequest, "error", gin.H{
 			"error": "scope not allow",
 		})
-		logrus.Errorf("scope not allow: got %+v, expected %+v", scopeList, client.Scopes)
+		logrus.Errorf("scope not allow: got %+v, expected %+v", scope, client.Scopes)
 		return
 	}
 
@@ -124,13 +103,7 @@ func (s *State) handlePostAuthAuthorize(c *gin.Context) {
 	}
 
 	// verify redirect_uri
-	ok := false
-	for _, uri := range client.RedirectUri {
-		if uri == body.RedirectURI {
-			ok = true
-			break
-		}
-	}
+	ok := checkRedirectUri(client, body.RedirectURI)
 	if !ok {
 		c.HTML(http.StatusBadRequest, "error", gin.H{
 			"error": "redirect_uri not allow",
@@ -139,27 +112,11 @@ func (s *State) handlePostAuthAuthorize(c *gin.Context) {
 	}
 
 	// verify scopes
-	scopeList := strings.Split(body.Scope, ",")
-	logrus.Debugf("scope=%s, scopeList=%+v", body.Scope, scopeList)
-	ok = true
-	for _, s := range client.Scopes {
-		oneOk := false
-		for _, scopeReq := range scopeList {
-			if strings.HasPrefix(scopeReq, s) {
-				oneOk = true
-				break
-			}
-		}
-		if !oneOk {
-			ok = false
-			break
-		}
-	}
-	if !ok {
+	if !checkScopeList(client, body.Scope) {
 		c.HTML(http.StatusBadRequest, "error", gin.H{
 			"error": "scope not allow",
 		})
-		logrus.Errorf("scope not allow: got %+v, expected %+v", scopeList, client.Scopes)
+		logrus.Errorf("scope not allow: got %+v, expected %+v", body.Scope, client.Scopes)
 		return
 	}
 
@@ -227,4 +184,36 @@ func (s *State) handlePostAuthAuthorize(c *gin.Context) {
 	q.Set("state", body.State)
 	redirectUri.RawQuery = q.Encode()
 	c.Redirect(http.StatusFound, redirectUri.String())
+}
+
+func checkRedirectUri(client *m.AuthClient, redirectUriReq string) bool {
+	// check redirect_uri
+	ok := false
+	for _, uri := range client.RedirectUri {
+		if strings.HasPrefix(redirectUriReq, uri) {
+			ok = true
+			break
+		}
+	}
+	return ok
+}
+
+func checkScopeList(client *m.AuthClient, scopes string) (ok bool) {
+	scopeList := strings.Split(scopes, ",")
+	ok = true
+	// if every element in scopes are in client.Scopes, ok = true
+	for _, scopeReq := range scopeList {
+		oneOk := false
+		for _, s := range client.Scopes {
+			if strings.HasPrefix(scopeReq, s) {
+				oneOk = true
+				break
+			}
+		}
+		if !oneOk {
+			ok = false
+			break
+		}
+	}
+	return ok
 }
