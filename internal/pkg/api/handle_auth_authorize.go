@@ -47,7 +47,7 @@ func (s *State) handleGetAuthAuthorize(c *gin.Context) {
 	}
 
 	// check if element of scope is in client.Scopes
-	if !checkScopeList(client, scope) {
+	if !checkScopeList(client.Scopes, scope) {
 		c.HTML(http.StatusBadRequest, "error", gin.H{
 			"error": "scope not allow",
 		})
@@ -112,7 +112,7 @@ func (s *State) handlePostAuthAuthorize(c *gin.Context) {
 	}
 
 	// verify scopes
-	if !checkScopeList(client, body.Scope) {
+	if !checkScopeList(client.Scopes, body.Scope) {
 		c.HTML(http.StatusBadRequest, "error", gin.H{
 			"error": "scope not allow",
 		})
@@ -198,13 +198,13 @@ func checkRedirectUri(client *m.AuthClient, redirectUriReq string) bool {
 	return ok
 }
 
-func checkScopeList(client *m.AuthClient, scopes string) (ok bool) {
+func checkScopeList(clientScopes []string, scopes string) (ok bool) {
 	scopeList := strings.Split(scopes, ",")
 	ok = true
 	// if every element in scopes are in client.Scopes, ok = true
 	for _, scopeReq := range scopeList {
 		oneOk := false
-		for _, s := range client.Scopes {
+		for _, s := range clientScopes {
 			if strings.HasPrefix(scopeReq, s) {
 				oneOk = true
 				break

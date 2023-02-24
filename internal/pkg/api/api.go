@@ -2,6 +2,7 @@ package api
 
 import (
 	"html/template"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -62,9 +63,8 @@ func (s *State) Start() {
 	r.Static("/auth/static", viper.GetString("server.static"))
 
 	r.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "hello",
-		})
+		c.Status(200)
+		io.WriteString(c.Writer, "welcom to nydus")
 	})
 
 	// signup pages
@@ -74,15 +74,18 @@ func (s *State) Start() {
 	// OAuth2 authorize
 	r.GET("/auth/authorize", s.handleGetAuthAuthorize)
 	r.POST("/auth/authorize", s.handlePostAuthAuthorize)
-
-	// r.POST("/auth/token")
-
+	// OAuth2 token
 	r.POST("/auth/token", s.handleAuthToken)
-	r.GET("/auth/userinfo", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "oauth2/userinfo",
-		})
-	})
+
+	// oidc user info
+	oidc := r.Group("/auth/oidc")
+	oidc.Use(s.handleVerifyToken())
+	{
+		oidc.GET("/userinfo", s.handleAuthUserinfo)
+		// TODO: add email info
+		// r.POST("/email", s.handleChangeEmail)
+	}
+
 	r.GET("/auth/keys", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "oauth2/keys",

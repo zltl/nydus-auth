@@ -51,10 +51,6 @@ func (s *State) validateCsrfJwtToken(tokenString string, url string, cip string)
 		return false, err
 	}
 	claim := token.Claims.(*CsrfClaim)
-	if len(claim.Audience) == 0 {
-		logrus.Error("require audience")
-		return false, err
-	}
 	// check cip
 	ok := false
 	for _, ip := range claim.AllowIp {
@@ -68,12 +64,10 @@ func (s *State) validateCsrfJwtToken(tokenString string, url string, cip string)
 		return false, errors.New("invalid client ip")
 	}
 
-	for _, a := range claim.Audience {
-		if a == url {
-			return true, nil
-		}
+	ok = checkScopeList(claim.Scope, url)
+	if !ok {
+		logrus.Errorf("claim.Scope= %v, url= %v", claim.Scope, url)
+		return false, errors.New("invalid audience")
 	}
-	logrus.Errorf("got scope %v, want %v", claim.Audience, url)
-
-	return false, errors.New("invalid audience")
+	return true, nil
 }
