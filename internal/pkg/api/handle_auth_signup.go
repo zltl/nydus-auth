@@ -24,7 +24,7 @@ func (s *State) handleGetAuthSignup(c *gin.Context) {
 
 	e := c.Query("e")
 
-	c.HTML(200, "auth/signup", gin.H{
+	c.HTML(200, "/auth/signup", gin.H{
 		"csrf_token": csrfToken,
 		"error":      e,
 	})

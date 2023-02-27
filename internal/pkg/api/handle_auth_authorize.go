@@ -64,7 +64,7 @@ func (s *State) handleGetAuthAuthorize(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "auth/authorize", gin.H{
+	c.HTML(http.StatusOK, "/auth/authorize", gin.H{
 		"client_id":    client.Id,
 		"redirect_uri": redirectUri,
 		"state":        state,

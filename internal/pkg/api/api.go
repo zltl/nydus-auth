@@ -3,7 +3,6 @@ package api
 import (
 	"html/template"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 
@@ -11,6 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/zltl/nydus-auth/pkg/id"
+
+	"github.com/dgraph-io/badger/v3"
 )
 
 type State struct {
@@ -28,6 +29,9 @@ type State struct {
 	sessionJwtRefreshExpire int
 
 	externUri string
+
+	dataDir string
+	kvDB    *badger.DB
 }
 
 func (s *State) Start() {
@@ -42,6 +46,7 @@ func (s *State) Start() {
 	s.sessionJwtTTL = viper.GetInt("server.session_jwt_ttl")
 	s.sessionJwtKeyId = viper.GetString("server.session_jwt_kid")
 	s.sessionJwtRefreshExpire = viper.GetInt("server.session_jwt_refresh_expire")
+	s.dataDir = viper.GetString("server.data_dir")
 
 	s.externUri = viper.GetString("server.extern_uri")
 	if s.externUri == "" {
@@ -55,6 +60,13 @@ func (s *State) Start() {
 	if err != nil {
 		logrus.Panic(err)
 	}
+
+	kv, err := badger.Open(badger.DefaultOptions(s.dataDir))
+	if err != nil {
+		logrus.Panic(err)
+	}
+	defer kv.Close()
+	s.kvDB = kv
 
 	r := gin.Default()
 	r.SetHTMLTemplate(tmpl)
@@ -86,11 +98,13 @@ func (s *State) Start() {
 		// r.POST("/email", s.handleChangeEmail)
 	}
 
-	r.GET("/auth/keys", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "oauth2/keys",
-		})
-	})
+	// nydus api
+	nyapi := r.Group("/api")
+	nyapi.Use(s.handleVerifyToken())
+	{
+		nyapi.GET("/data", s.handleApiGetData)
+		nyapi.POST("/data", s.handleApiPostData)
+	}
 
 	listenAddr := viper.GetString("server.addr") + ":" + viper.GetString("server.port")
 	r.Run(listenAddr)
