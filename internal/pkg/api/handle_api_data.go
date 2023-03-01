@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gin-gonic/gin"
@@ -13,6 +14,11 @@ import (
 
 func (s *State) handleApiGetData(c *gin.Context) {
 	uid := c.MustGet("uid").(id.ID)
+
+	var ts int64
+	tsStr := c.Params.ByName("ts")
+	ts, _ = strconv.ParseInt(tsStr, 10, 64)
+	logrus.Debugf("ts=%d", ts)
 
 	// s.kvDB.Get
 	err := s.kvDB.View(func(txn *badger.Txn) error {
@@ -28,12 +34,17 @@ func (s *State) handleApiGetData(c *gin.Context) {
 				logrus.Error(err)
 				return err
 			}
-			c.JSON(http.StatusOK, gin.H{
-				"uid":       uid,
-				"timestamp": ds.Ts,
-				"item":      ds.Data,
-				"from":      ds.From,
-			})
+			if ds.Ts > ts {
+				logrus.Infof("ds.Ts=%d, ts=%d", ds.Ts, ts)
+				c.JSON(http.StatusOK, gin.H{
+					"uid":       uid,
+					"timestamp": ds.Ts,
+					"item":      ds.Data,
+					"from":      ds.From,
+				})
+				return nil
+			}
+			c.JSON(http.StatusAlreadyReported, gin.H{})
 			return nil
 		})
 		if err != nil {
@@ -46,7 +57,7 @@ func (s *State) handleApiGetData(c *gin.Context) {
 		return nil
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusNoContent, gin.H{
 			"error":             "internal_error",
 			"error_description": "could not get data",
 		})

@@ -102,7 +102,7 @@ func (s *State) Start() {
 	nyapi := r.Group("/api")
 	nyapi.Use(s.handleVerifyToken())
 	{
-		nyapi.GET("/data", s.handleApiGetData)
+		nyapi.GET("/data/:ts", s.handleApiGetData)
 		nyapi.POST("/data", s.handleApiPostData)
 	}
 
